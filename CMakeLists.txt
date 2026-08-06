@@ -19,9 +19,13 @@ add_library(voice_core
   src/core/Config.cpp
   src/core/StateTracker.cpp
   src/core/EventQueue.cpp
+  src/core/UdpListener.cpp
 )
 target_include_directories(voice_core PUBLIC src)
 target_link_libraries(voice_core PUBLIC nlohmann_json::nlohmann_json)
+if(WIN32)
+  target_link_libraries(voice_core PUBLIC ws2_32)
+endif()
 
 add_executable(voice-center src/main.cpp)
 target_link_libraries(voice-center PRIVATE voice_core)
