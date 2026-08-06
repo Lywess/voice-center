@@ -1,4 +1,5 @@
 #include "core/Config.hpp"
+#include "core/EventQueue.hpp"
 #include "core/StateTracker.hpp"
 #include <cassert>
 #include <filesystem>
@@ -42,6 +43,25 @@ int main() {
   assert(ev->type == vc::VoiceEventType::DeviceStart);
   assert(!st.on_snapshot(a).has_value());  // still 1
   std::cout << "state tracker tests passed\n";
+
+  {
+    vc::EventQueue q(5000);
+    vc::VoiceEvent e{vc::VoiceEventType::DeviceStart, "192.168.1.10", "灌装机"};
+    assert(q.try_enqueue(e));
+    assert(!q.try_enqueue(e));  // cooldown
+    auto out = q.try_pop();
+    assert(out.has_value());
+    assert(out->ip == "192.168.1.10");
+    assert(!q.try_pop().has_value());
+  }
+  {
+    vc::EventQueue q(0);  // zero cooldown for multi-device order
+    assert(q.try_enqueue({vc::VoiceEventType::DeviceStart, "a", "A"}));
+    assert(q.try_enqueue({vc::VoiceEventType::DeviceStart, "b", "B"}));
+    assert(q.try_pop()->ip == "a");
+    assert(q.try_pop()->ip == "b");
+  }
+  std::cout << "event queue tests passed\n";
 
   return 0;
 }

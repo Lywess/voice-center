@@ -18,6 +18,7 @@ add_library(voice_core
   src/core/Logger.cpp
   src/core/Config.cpp
   src/core/StateTracker.cpp
+  src/core/EventQueue.cpp
 )
 target_include_directories(voice_core PUBLIC src)
 target_link_libraries(voice_core PUBLIC nlohmann_json::nlohmann_json)
