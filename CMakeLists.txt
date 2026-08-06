@@ -23,6 +23,7 @@ set(VOICE_CORE_SOURCES
   src/core/EventQueue.cpp
   src/core/UdpListener.cpp
   src/core/DryRunPlayer.cpp
+  src/core/VoiceManager.cpp
 )
 
 if(NOT VOICE_CENTER_DRY_ONLY)

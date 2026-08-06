@@ -57,6 +57,13 @@ bool SdlPlayer::play(const std::string& path) {
   while (SDL_GetQueuedAudioSize(dev) > 0) {
     SDL_Delay(10);
   }
+  // Queue drain only means SDL handed bytes to the driver; wait roughly one
+  // device buffer so FIFO play() returns after audible playback finishes.
+  if (have.freq > 0 && have.samples > 0) {
+    SDL_Delay(static_cast<Uint32>(have.samples) * 1000u / have.freq + 20u);
+  } else {
+    SDL_Delay(100);
+  }
 
   SDL_CloseAudioDevice(dev);
   SDL_FreeWAV(buf);
