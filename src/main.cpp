@@ -67,10 +67,21 @@ void pause_if_needed() {
   std::cin.get();
 }
 
-std::filesystem::path find_repo_root() {
+std::filesystem::path find_app_root() {
   namespace fs = std::filesystem;
-  std::vector<fs::path> starts;
-  starts.push_back(fs::current_path());
+  // 1) 打包布局：exe 同级有 config/voice.json
+#ifdef _WIN32
+  const fs::path beside_exe = exe_dir();
+  if (fs::exists(beside_exe / "config" / "voice.json")) {
+    return beside_exe;
+  }
+#endif
+  // 2) 当前工作目录
+  if (fs::exists(fs::current_path() / "config" / "voice.json")) {
+    return fs::current_path();
+  }
+  // 3) 开发时：从 cwd / exe 向上找仓库根
+  std::vector<fs::path> starts{fs::current_path()};
 #ifdef _WIN32
   starts.push_back(exe_dir());
 #endif
@@ -91,7 +102,7 @@ std::filesystem::path find_repo_root() {
 
 void print_usage(const char* argv0) {
   vc::log_info(std::string("用法: ") + argv0 + " [--config path] [--dry-run]");
-  vc::log_info("默认配置: config/voice.json（会自动从 exe 向上查找仓库根目录）");
+  vc::log_info("默认配置: 与 exe 同级的 config/voice.json（构建时会自动复制）");
 }
 
 }  // namespace
@@ -131,10 +142,10 @@ int main(int argc, char** argv) {
 
   try {
     if (!config_explicit) {
-      const auto root = find_repo_root();
+      const auto root = find_app_root();
       if (root.empty()) {
         throw std::runtime_error(
-            "找不到 config/voice.json。请在仓库根目录运行，或使用 --config 指定路径。");
+            "找不到 config/voice.json。请确认 exe 同级有 config/ 目录，或使用 --config 指定。");
       }
       std::filesystem::current_path(root);
       config_path = (root / "config" / "voice.json").string();

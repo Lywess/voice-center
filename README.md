@@ -58,22 +58,34 @@ cmake --build build --config Release
 
 ## 运行
 
-程序会自动从当前目录或 exe 所在路径向上查找 `config/voice.json`，并切换到仓库根目录（双击 `build\Release\voice-center.exe` 也可以）。
+构建成功后，`build\Release\` 会自动带上：
 
-若中文日志乱码：请用 **Windows Terminal** 或先执行 `chcp 65001`，再运行程序（程序启动时也会把控制台切到 UTF-8）。
+```text
+build\Release\
+  voice-center.exe
+  SDL2.dll
+  config\voice.json
+  assets\audio\...
+```
+
+双击 exe 或从任意目录运行都可以；程序优先读 **exe 同级** 的 `config/voice.json`，并把工作目录切到 exe 所在目录（音频相对路径才能对上）。
+
+把整个 `Release` 文件夹（或至少以上文件）打包给用户即可。
+
+若中文日志乱码：请用 **Windows Terminal** 或先执行 `chcp 65001`。
 
 ```powershell
 # 真实播放（需 assets/audio/*.wav + SDL2）
 .\build\Release\voice-center.exe
 
-# 无音箱：验证边沿 / 冷却 / 队列与「收到启动信号」（缺 WAV 时打「未找到音频文件」）
+# 无音箱验证
 .\build\Release\voice-center.exe --dry-run
 
-# 指定配置文件
+# 指定配置
 .\build\Release\voice-center.exe --config config\voice.json --dry-run
 ```
 
-Ctrl+C 会停止接收新事件；若正在播 WAV，会尽量播完当前一句再退出。启动失败时会暂停等待回车，避免双击窗口一闪而过。
+Ctrl+C 停止；启动失败会暂停等待回车，避免双击闪退。
 
 ## Demo 联调（udp_mock）
 
