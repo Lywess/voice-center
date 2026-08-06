@@ -6,67 +6,83 @@ Windows C++17 工业语音播报 Demo（UDP 监听 + WAV 播放）。
 
 ## 依赖
 
-- CMake ≥ 3.20
-- C++17 编译器（MSVC / Visual Studio）
+- **Visual Studio 2022**（含「使用 C++ 的桌面开发」工作负载）或独立 MSVC 工具链
+- **CMake** ≥ 3.20
 - **SDL2**（真实播放；`--dry-run` 可不播音频，但仍建议安装以便完整构建）
+- **Python 3**（仅 `udp_mock` 联调脚本，可选）
 
-### 安装 SDL2（推荐 vcpkg）
+## 构建（Visual Studio 2022）
+
+在仓库根目录打开 **Developer PowerShell for VS 2022**（或已配置 `cl.exe` 的终端）。
+
+### 方式 A：vcpkg（推荐）
 
 ```powershell
 vcpkg install sdl2:x64-windows
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=[vcpkg]/scripts/buildsystems/vcpkg.cmake
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=[vcpkg根目录]/scripts/buildsystems/vcpkg.cmake
 cmake --build build --config Release
 ```
 
-### 或使用官方 Windows 开发包
+Release 产物：`build\Release\voice-center.exe`（CMake 会尝试将 `SDL2.dll` 复制到同目录）。
+
+### 方式 B：SDL2 官方开发包 + CMAKE_PREFIX_PATH
 
 1. 从 [SDL2 Releases](https://github.com/libsdl-org/SDL/releases) 下载 `SDL2-devel-*-VC.zip` 并解压
-2. 配置时指定前缀（指向含 `cmake/sdl2-config.cmake` 的目录）：
+2. 配置时指向前缀目录（含 `cmake/sdl2-config.cmake` 的父目录）：
 
 ```powershell
 cmake -S . -B build -DCMAKE_PREFIX_PATH=D:\path\to\SDL2-2.x.y
 cmake --build build --config Release
 ```
 
-仅构建 dry-run 播放器（不链接 SDL2）：
+### 仅构建 dry-run（不链接 SDL2）
+
+无 SDL2 或只想验证 UDP / 队列逻辑时：
 
 ```powershell
 cmake -S . -B build -DVOICE_CENTER_DRY_ONLY=ON
 cmake --build build --config Release
 ```
 
-## 构建
+此构建**必须**使用 `--dry-run` 运行。
+
+## 音频文件
+
+启动播报 WAV 由用户自行放入 [`assets/audio/`](assets/audio/README.md)，详见该目录下的说明。期望文件：
+
+- `assets/audio/filling_start.wav` — 灌装机
+- `assets/audio/capping_start.wav` — 旋盖机
+- `assets/audio/labeling_start.wav` — 贴标机
+
+缺文件时仍会打「收到启动信号」，但会记录 `未找到音频文件`；放入 WAV 后去掉 `--dry-run` 即可有声演示。
+
+## 运行
+
+**请在仓库根目录运行**，以便相对路径 `config/voice.json` 与 `assets/audio/` 生效。
 
 ```powershell
-cmake -S . -B build
-cmake --build build --config Release
-```
-
-## 运行（请在仓库根目录）
-
-默认读取 `config/voice.json`（相对当前工作目录）。
-
-```powershell
-# 真实播放（需 assets/audio/*.wav）
+# 真实播放（需 assets/audio/*.wav + SDL2）
 .\build\Release\voice-center.exe
 
-# 无音箱验证边沿 / 冷却 / 队列与「收到启动信号」
+# 无音箱：验证边沿 / 冷却 / 队列与「收到启动信号」（缺 WAV 时打「未找到音频文件」）
 .\build\Release\voice-center.exe --dry-run
 
-# 指定配置
+# 指定配置文件
 .\build\Release\voice-center.exe --config config\voice.json --dry-run
 ```
 
 Ctrl+C 会停止接收新事件；若正在播 WAV，会尽量播完当前一句再退出。
 
-## Demo 联调步骤
+## Demo 联调（udp_mock）
 
-终端 A — UDP 模拟广播：
+终端 A — 循环广播 CSV 中的设备 JSON（默认 `255.255.255.255:9999`，与 `config/voice.json` 中 `udp.port` 一致）：
 
 ```powershell
 cd udp_mock
 python udp_broadcast.py --interval 0.2
 ```
+
+可选参数：`--csv`、`--host`、`--port`、`--interval`（见 `python udp_broadcast.py -h`）。
 
 终端 B — 仓库根目录启动 voice-center：
 
@@ -74,11 +90,16 @@ python udp_broadcast.py --interval 0.2
 .\build\Release\voice-center.exe --dry-run
 ```
 
-当 CSV 中某配置 IP 出现 `run` `0→1`（首次见到该 IP 不会触发）时，日志应出现：
+当 CSV 中某**已配置 IP** 出现 `run` **0→1**（该 IP 首次出现、无论 `run` 为何值，均不会触发）时，日志应出现：
 
 1. `收到启动信号 ip=... name=...`
-2. `将播放语音 path=...`（`--dry-run`）或 `未找到音频文件 path=...`（缺 WAV 时）
+2. `--dry-run` 且文件存在：`将播放语音 path=...`；缺 WAV：`未找到音频文件 path=...`
+3. 非 dry-run 且文件存在：实际播放对应 WAV
 
-同一 IP 在 `cooldown_ms`（默认 5s）内再次启动边沿会被静默丢弃。未知 IP 不会进入播报路径。
+同一 IP 在 `cooldown_ms`（默认 5s）内再次启动边沿会被静默丢弃。未知 IP 不会进入播报路径（仅 DEBUG 日志）。
 
-音频文件放到 `assets/audio/` 后去掉 `--dry-run` 即可有声演示。
+调试时可另开终端用 `udp_mock/udp_listener.py` 监听端口，确认报文格式。
+
+## 配置
+
+默认配置文件：`config/voice.json`（UDP 绑定、设备 IP → 名称 → 音频路径、队列冷却等）。
