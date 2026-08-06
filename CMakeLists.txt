@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 project(voice-center VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(MSVC)
+  add_compile_options(/utf-8)
+endif()
 
 include(FetchContent)
 set(FETCHCONTENT_SOURCE_DIR_JSON "${CMAKE_SOURCE_DIR}/third_party/json")
@@ -14,6 +17,7 @@ FetchContent_MakeAvailable(json)
 add_library(voice_core
   src/core/Logger.cpp
   src/core/Config.cpp
+  src/core/StateTracker.cpp
 )
 target_include_directories(voice_core PUBLIC src)
 target_link_libraries(voice_core PUBLIC nlohmann_json::nlohmann_json)

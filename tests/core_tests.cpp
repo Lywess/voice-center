@@ -1,4 +1,5 @@
 #include "core/Config.hpp"
+#include "core/StateTracker.hpp"
 #include <cassert>
 #include <filesystem>
 #include <fstream>
@@ -28,5 +29,19 @@ int main() {
   assert(d != nullptr);
   assert(vc::find_device(cfg, "9.9.9.9") == nullptr);
   std::cout << "config tests passed\n";
+
+  vc::StateTracker st;
+  vc::DeviceSnapshot a{"192.168.1.10", "灌装机", 1};
+  assert(!st.on_snapshot(a).has_value());  // first sight
+  a.run = 0;
+  assert(!st.on_snapshot(a).has_value());
+  a.run = 1;
+  auto ev = st.on_snapshot(a);
+  assert(ev.has_value());
+  assert(ev->ip == "192.168.1.10");
+  assert(ev->type == vc::VoiceEventType::DeviceStart);
+  assert(!st.on_snapshot(a).has_value());  // still 1
+  std::cout << "state tracker tests passed\n";
+
   return 0;
 }
