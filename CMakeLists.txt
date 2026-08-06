@@ -38,6 +38,10 @@ if(WIN32)
   target_link_libraries(voice_core PUBLIC ws2_32)
 endif()
 
+if(VOICE_CENTER_DRY_ONLY)
+  target_compile_definitions(voice_core PUBLIC VOICE_CENTER_DRY_ONLY)
+endif()
+
 if(NOT VOICE_CENTER_DRY_ONLY)
   # Console app uses normal main(); avoid SDL_main rewrite.
   target_compile_definitions(voice_core PUBLIC SDL_MAIN_HANDLED)
