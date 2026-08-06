@@ -3,8 +3,23 @@ project(voice-center VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(voice-center
-  src/main.cpp
-  src/core/Logger.cpp
+include(FetchContent)
+set(FETCHCONTENT_SOURCE_DIR_JSON "${CMAKE_SOURCE_DIR}/third_party/json")
+FetchContent_Declare(
+  json
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
 )
-target_include_directories(voice-center PRIVATE src)
+FetchContent_MakeAvailable(json)
+
+add_library(voice_core
+  src/core/Logger.cpp
+  src/core/Config.cpp
+)
+target_include_directories(voice_core PUBLIC src)
+target_link_libraries(voice_core PUBLIC nlohmann_json::nlohmann_json)
+
+add_executable(voice-center src/main.cpp)
+target_link_libraries(voice-center PRIVATE voice_core)
+
+add_executable(core_tests tests/core_tests.cpp)
+target_link_libraries(core_tests PRIVATE voice_core)
