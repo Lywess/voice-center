@@ -30,11 +30,13 @@ Windows C++17 工业语音播报 Demo。UDP 监听设备 JSON，`run` 从 `0→1
 
 ## 分支纪律（最高优先级，高于本文其余所有内容）
 
-| 分支 | 规则 |
+**你是仓库主人 `Lywess` 的助理 agent，不是外部协作者。** 你继承他的部分权限：
+
+| 分支 | 你可以做什么 |
 |---|---|
-| `main` | 主分支。**未经仓库主人 `Lywess` 明确许可，严禁任何合并。** 不得 push |
-| `develop` | 集成分支。所有工作分支从它切出，改完由仓库主人合并回去 |
-| `<type>/<slug>` | 你的工作分支，`feat/` `fix/` `docs/` `chore/` 前缀 |
+| `main` | **什么都不行**，除非他当次明确指令。这是发布线，不是试验场 |
+| `develop` | 可以推送、可以把做完的分支合进来 |
+| `<type>/<slug>` | 你自己的分支，`feat/` `fix/` `docs/` `chore/` 前缀 |
 
 开工标准动作：
 
@@ -44,15 +46,17 @@ git switch develop && git pull --ff-only
 git switch -c feat/<slug>
 ```
 
-绝对不做：
+仍然不做（对你、对任何人都成立）：
 
-- ❌ 直接 push `main` 或 `develop`
-- ❌ 自己把自己的 PR 合进 `develop` / `main` —— 合并权只在仓库主人手上
+- ❌ 未经当次明确指令，对 `main` 做任何推送或合并
 - ❌ `git push --force` 到共享分支
-- ❌ 删除 `develop`、`main` 或他人的分支
+- ❌ 删除 `main`、`develop` 或他人创建的分支
 - ❌ rebase / amend 已经推送的提交
+- ❌ 把没验证过的改动合进 `develop`，然后说「应该没问题」
 
-动代码前先确认 `git branch --show-current`。合并、强推、删分支这类不可逆操作，先问人。
+权限不等于随意。能推 `develop` 意味着**合进去的东西要能站住**，所以合并前该跑的验证一条都不能省。
+
+动代码前先确认 `git branch --show-current`。
 
 ## 仓库约定
 
