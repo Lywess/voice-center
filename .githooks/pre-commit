@@ -1,0 +1,117 @@
+#!/bin/sh
+# voice-center pre-commit guard
+#
+# 只做脚本能可靠判定的事：构建产物、超大文件、密钥文件、冲突标记、行尾空白。
+# 代码逻辑是否正确，这个脚本判断不了 —— 那部分交给 git-commit-guard skill。
+#
+# 安装：git config core.hooksPath .githooks
+# 卸载：git config --unset core.hooksPath
+
+set -u
+
+if [ -t 1 ]; then
+    RED=$(printf '\033[0;31m')
+    YEL=$(printf '\033[0;33m')
+    GRN=$(printf '\033[0;32m')
+    DIM=$(printf '\033[2m')
+    RST=$(printf '\033[0m')
+else
+    RED=''; YEL=''; GRN=''; DIM=''; RST=''
+fi
+
+blocked=0
+warned=0
+
+fail() { printf '%s  x %s%s\n' "$RED" "$1" "$RST"; blocked=$((blocked + 1)); }
+warn() { printf '%s  ! %s%s\n' "$YEL" "$1" "$RST"; warned=$((warned + 1)); }
+ok()   { printf '%s  + %s%s\n' "$GRN" "$1" "$RST"; }
+
+printf '%svoice-center pre-commit guard%s\n' "$DIM" "$RST"
+
+# ---------------------------------------------------------------- 冲突标记 / 空白
+check_output=$(git diff --cached --check 2>&1)
+if [ -n "$check_output" ]; then
+    printf '%s\n' "$check_output" | head -20 | sed 's/^/      /'
+    fail "存在冲突标记或行尾空白问题（见上）"
+else
+    ok "无冲突标记、无行尾空白"
+fi
+
+# ---------------------------------------------------------------- 逐个暂存文件
+files=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ -z "$files" ]; then
+    ok "暂存区为空，没什么要提交的"
+    printf '\n%s机械检查结束。%s\n' "$GRN" "$RST"
+    exit 0
+fi
+
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+
+    # 构建产物 / 缓存目录
+    case "$f" in
+        build/* | */build/* | __pycache__/* | */__pycache__/* | \
+        .venv/* | */.venv/* | node_modules/* | */node_modules/* | \
+        .archify/* | */.archify/* | .cache/* | */.cache/*)
+            fail "构建产物或缓存目录: $f"
+            continue
+            ;;
+    esac
+
+    # 编译产物
+    case "$f" in
+        *.o | *.obj | *.exe | *.dll | *.pdb | *.ilk | *.exp | *.lib | \
+        *.a | *.so | *.dylib | *.pyc | *.pyo | *.class | *.jar)
+            fail "编译产物不应入库: $f"
+            continue
+            ;;
+    esac
+
+    # 密钥 / 凭据文件
+    case "$f" in
+        .env | *.env | *.env.* | id_rsa* | *id_rsa* | id_ed25519* | *id_ed25519* | \
+        *.pem | *.key | *.p12 | *.pfx | *.keystore | *.jks | *.ppk)
+            fail "疑似密钥或凭据文件: $f"
+            continue
+            ;;
+    esac
+
+    # 超大文件（> 1 MiB）
+    size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+    size=${size:-0}
+    if [ "$size" -gt 1048576 ]; then
+        fail "文件超过 1 MiB（$((size / 1024)) KB）: $f"
+        continue
+    fi
+
+    # 疑似硬编码凭据（只警告，需人工判断）
+    case "$f" in
+        *.c | *.cc | *.cpp | *.h | *.hpp | *.py | *.js | *.mjs | *.ts | \
+        *.json | *.yaml | *.yml | *.toml | *.ini | *.cfg | *.md | CMakeLists.txt)
+            if git diff --cached -U0 -- "$f" 2>/dev/null \
+                | grep -E '^\+' \
+                | grep -Eqi '(password|passwd|secret|api[_-]?key|access[_-]?key|token)[[:space:]]*[:=][[:space:]]*[^[:space:]]{16,}'; then
+                warn "可能存在硬编码凭据，请人工确认: $f"
+            fi
+            ;;
+    esac
+done <<EOF
+$files
+EOF
+
+# ---------------------------------------------------------------- 结论
+if [ "$blocked" -gt 0 ]; then
+    printf '\n%s提交被阻止：%d 处必须处理%s\n' "$RED" "$blocked" "$RST"
+    [ "$warned" -gt 0 ] && printf '%s另有 %d 处警告%s\n' "$YEL" "$warned" "$RST"
+    printf '%s确属误判时，请联系仓库主人调整本 hook，不要用 --no-verify 绕过。%s\n' "$DIM" "$RST"
+    exit 1
+fi
+
+if [ "$warned" -gt 0 ]; then
+    printf '\n%s机械检查通过，但有 %d 处警告需人工确认%s\n' "$YEL" "$warned" "$RST"
+else
+    printf '\n%s机械检查通过%s\n' "$GRN" "$RST"
+fi
+printf '%s脚本查不出逻辑问题 —— 提交前仍需走 git-commit-guard。%s\n' "$DIM" "$RST"
+exit 0

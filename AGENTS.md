@@ -21,8 +21,12 @@ Windows C++17 工业语音播报 Demo。UDP 监听设备 JSON，`run` 从 `0→1
 4. **写实现代码前** → `test-driven-development`
 5. **遇到 bug** → `systematic-debugging`，先定位根因再改
 6. **声称完成前** → `verification-before-completion`，跑命令看输出
+7. **提交前** → `git-commit-guard`，检查提交范围、生成 Commit Message、给出检查报告
 
 例外：拼写、注释、单行明显修复可以跳过，但要说清楚为什么跳。
+
+`.githooks/pre-commit` 会机械拦截构建产物、超大文件、密钥文件和冲突标记 —— 它只处理能靠脚本判定的事；代码逻辑是否合理仍然要靠 `git-commit-guard` 审。hook 通过不等于可以提交。
+
 
 ## 分支纪律（最高优先级，高于本文其余所有内容）
 
